@@ -1,16 +1,16 @@
 ###
   Copyright (c) 2014 clowwindy
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in
   all copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,10 +30,10 @@ inet = require('./inet')
 Encryptor = require("./encrypt").Encryptor
 connections = 0
 
-createServer = (serverAddr, serverPort, port, key, method, timeout, local_address='127.0.0.1') ->
-  
+createServer = (serverAddr, serverPort, port, key, method, timeout, local_address = '127.0.0.1') ->
+
   udpServer = udpRelay.createServer(local_address, port, serverAddr, serverPort, key, method, timeout, true)
-  
+
   getServer = ->
     aPort = serverPort
     aServer = serverAddr
@@ -50,7 +50,7 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
       aServer = r[1]
       aPort = +r[2]
     return [aServer, aPort]
-     
+
   server = net.createServer((connection) ->
     connections += 1
     connected = true
@@ -92,7 +92,7 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
           # +----+-----+-------+------+----------+----------+
           # | 1  |  1  | X'00' |  1   | Variable |    2     |
           # +----+-----+-------+------+----------+----------+
-  
+
           #cmd and addrtype
           cmd = data[1]
           addrtype = data[3]
@@ -166,11 +166,11 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
               utils.error e
               remote.destroy() if remote
               connection.destroy() if connection
-  
+
           remote.on "end", ->
             utils.debug "remote on end"
             connection.end() if connection
-  
+
           remote.on "error", (e)->
             utils.debug "remote on error"
             utils.error "remote #{remoteAddr}:#{remotePort} error: #{e}"
@@ -181,11 +181,11 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
               connection.destroy() if connection
             else
               connection.end() if connection
-  
+
           remote.on "drain", ->
             utils.debug "remote on drain"
             connection.resume() if connection
-  
+
           remote.setTimeout timeout, ->
             utils.debug "remote on timeout"
             remote.destroy() if remote
@@ -194,8 +194,8 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
           addrToSendBuf = new Buffer(addrToSend, "binary")
           addrToSendBuf = encryptor.encrypt addrToSendBuf
           remote.setNoDelay false
-          remote.write addrToSendBuf 
-          
+          remote.write addrToSendBuf
+
           if data.length > headerLength
             buf = new Buffer(data.length - headerLength)
             data.copy buf, 0, headerLength
@@ -216,12 +216,12 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
         data = encryptor.encrypt data
         remote.setNoDelay true
         connection.pause() unless remote.write(data)
-  
+
     connection.on "end", ->
       connected = false
       utils.debug "connection on end"
       remote.end()  if remote
-  
+
     connection.on "error", (e)->
       utils.debug "connection on error"
       utils.error "local error: #{e}"
@@ -234,12 +234,12 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
       else
         remote.end() if remote
       clean()
-  
+
     connection.on "drain", ->
       # calling resume() when remote not is connected will crash node.js
       utils.debug "connection on drain"
       remote.resume() if remote and stage is 5
-  
+
     connection.setTimeout timeout, ->
       utils.debug "connection on timeout"
       remote.destroy() if remote
@@ -251,7 +251,7 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
   else
     server.listen port, ->
       utils.info "local listening at 0.0.0.0:" + port
-  
+
   server.on "error", (e) ->
     if e.code is "EADDRINUSE"
       utils.error "Address in use, aborting"
@@ -260,11 +260,11 @@ createServer = (serverAddr, serverPort, port, key, method, timeout, local_addres
 
   server.on "close", ->
     udpServer.close()
-    
+
   return server
 
 exports.createServer = createServer
-exports.main = ->  
+exports.main = ->
   console.log(utils.version)
   configFromArgs = utils.parseArgs()
   configPath = 'config.json'
@@ -292,7 +292,7 @@ exports.main = ->
     utils.config(utils.DEBUG)
 
   utils.checkConfig config
-  
+
   SERVER = config.server
   REMOTE_PORT = config.server_port
   PORT = config.local_port

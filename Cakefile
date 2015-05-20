@@ -1,7 +1,7 @@
 {print} = require 'util'
 {spawn} = require 'child_process'
 
-build = () ->
+build = ->
   os = require 'os'
   if os.platform() == 'win32'
     coffeeCmd = 'coffee.cmd'
@@ -16,7 +16,7 @@ build = () ->
     if code != 0
       process.exit code
 
-test = () ->
+test = ->
   os = require 'os'
   coffee = spawn 'node', ['lib/shadowsocks/test.js']
   coffee.stderr.on 'data', (data) ->
@@ -32,4 +32,3 @@ task 'build', 'Build ./ from src/', ->
 
 task 'test', 'Run unit test', ->
   test()
-

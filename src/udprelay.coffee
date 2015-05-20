@@ -1,16 +1,16 @@
 ###
   Copyright (c) 2014 clowwindy
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in
   all copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,27 +33,27 @@ class LRUCache
     that = this
     sweepFun = ->
       that.sweep()
-    
+
     @interval = setInterval(sweepFun, sweepInterval)
     @dict = {}
-    
+
   setItem: (key, value) ->
     cur = process.hrtime()
     @dict[key] = [value, cur]
-  
+
   getItem: (key) ->
     v = @dict[key]
     if v
       v[1] = process.hrtime()
       return v[0]
     return null
-  
+
   delItem: (key) ->
     delete @dict[key]
 
   destroy: ->
     clearInterval @interval
-  
+
   sweep: ->
     utils.debug "sweeping"
     dict = @dict
@@ -118,7 +118,7 @@ encrypt = (password, method, data) ->
   catch e
     utils.error e
     return null
-  
+
 decrypt = (password, method, data) ->
   try
     return encryptor.encryptAll(password, method, 0, data)
@@ -150,9 +150,9 @@ parseHeader = (data, requestHeaderOffset) ->
   catch e
     utils.error e
     return null
- 
 
-exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort, 
+
+exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
                         password, method, timeout, isLocal) ->
   # if listen to ANY, listen to both IPv4 and IPv6
   # or listen to IP family of IP address
@@ -168,10 +168,10 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
   for udpTypeToListen in udpTypesToListen
     server = dgram.createSocket(udpTypeToListen)
     clients = new LRUCache(timeout, 10 * 1000)
-    
+
     clientKey = (localAddr, localPort, destAddr, destPort) ->
       return "#{localAddr}:#{localPort}:#{destAddr}:#{destPort}"
-  
+
     server.on("message", (data, rinfo) ->
       # Parse request
       requestHeaderOffset = 0
@@ -193,14 +193,14 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
         # drop
         return
       [addrtype, destAddr, destPort, headerLength] = headerResult
-       
+
       if isLocal
         sendDataOffset = requestHeaderOffset
         [serverAddr, serverPort] = [remoteAddr, remotePort]
       else
         sendDataOffset = headerLength
         [serverAddr, serverPort] = [destAddr, destPort]
-      
+
       key = clientKey(rinfo.address, rinfo.port, destAddr, destPort)
       client = clients.getItem(key)
       if not client?
@@ -211,7 +211,7 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
         else
           client = dgram.createSocket("udp4")
         clients.setItem(key, client)
-      
+
         client.on "message", (data1, rinfo1) ->
 #          utils.debug "client got #{data1} from #{rinfo1.address}:#{rinfo1.port}"
           if not isLocal
@@ -246,16 +246,16 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
             data2 = Buffer.concat([responseHeader, data1])
           server.send data2, 0, data2.length, rinfo.port, rinfo.address, (err, bytes) ->
             utils.debug "remote to local sent"
-    
+
         client.on "error", (err) ->
           utils.error "UDP client error: #{err}"
-        
+
         client.on "close", ->
           utils.debug "UDP client close"
           clients.delItem(key)
-  
+
       utils.debug "pairs: #{Object.keys(clients.dict).length}"
- 
+
       dataToSend = data.slice(sendDataOffset, data.length)
       if isLocal
         # on local, client to server
@@ -267,9 +267,9 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
       utils.debug "UDP send to #{destAddr}:#{destPort}"
       client.send dataToSend, 0, dataToSend.length, serverPort, serverAddr, (err, bytes) ->
         utils.debug "local to remote sent"
-  
+
     )
-    
+
     server.on "listening", ->
       address = server.address()
       utils.info("UDP server listening " + address.address + ":" + address.port)
@@ -277,10 +277,10 @@ exports.createServer = (listenAddr, listenPort, remoteAddr, remotePort,
     server.on "close", ->
       utils.info "UDP server closing"
       clients.destroy()
-    
+
     if listenAddr?
       server.bind(listenPort, listenAddr)
     else
       server.bind(listenPort)
-    
+
     return server

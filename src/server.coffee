@@ -1,16 +1,16 @@
 ###
   Copyright (c) 2014 clowwindy
-  
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-  
+
   The above copyright notice and this permission notice shall be included in
   all copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,7 +30,7 @@ inet = require("./inet")
 Encryptor = require("./encrypt").Encryptor
 
 exports.main = ->
-  
+
   console.log(utils.version)
   configFromArgs = utils.parseArgs(true)
   configPath = 'config.json'
@@ -56,7 +56,7 @@ exports.main = ->
     config[k] = v
   if config.verbose
     utils.config(utils.DEBUG)
-    
+
   utils.checkConfig config
 
   timeout = Math.floor(config.timeout * 1000) or 300000
@@ -65,21 +65,21 @@ exports.main = ->
   key = config.password
   METHOD = config.method
   SERVER = config.server
-  
+
   if not (SERVER and (port or portPassword) and key)
     utils.warn 'config.json not found, you have to specify all config in commandline'
     process.exit 1
-    
+
   connections = 0
-  
-  if portPassword 
+
+  if portPassword
     if port or key
       utils.warn 'warning: port_password should not be used with server_port and password. server_port and password will be ignored'
   else
     portPassword = {}
     portPassword[port.toString()] = key
-      
-    
+
+
   for port, key of portPassword
     servers = SERVER
     unless servers instanceof Array
@@ -102,7 +102,7 @@ exports.main = ->
           remoteAddr = null
           remotePort = null
           utils.debug "connections: #{connections}"
-          
+
           clean = ->
             utils.debug "clean"
             connections -= 1
@@ -110,7 +110,7 @@ exports.main = ->
             connection = null
             encryptor = null
             utils.debug "connections: #{connections}"
-    
+
           connection.on "data", (data) ->
             utils.log utils.EVERYTHING, "connection on data"
             try
@@ -147,10 +147,10 @@ exports.main = ->
                   remoteAddr = data.slice(2, 2 + addrLen).toString("binary")
                   remotePort = data.readUInt16BE(2 + addrLen)
                   headerLength = 2 + addrLen + 2
-                
+
                 # avoid reading from cache before getting connected
                 connection.pause()
-                
+
                 # connect remote server
                 remote = net.connect(remotePort, remoteAddr, ->
                   utils.info "connecting #{remoteAddr}:#{remotePort}"
@@ -158,22 +158,22 @@ exports.main = ->
                     remote.destroy() if remote
                     return
                   i = 0
-                  
+
                   # now we get connected, resume data flow
                   connection.resume()
-        
+
                   while i < cachedPieces.length
                     piece = cachedPieces[i]
                     remote.write piece
                     i++
                   cachedPieces = null # save memory
-                   
+
                   # use a small timeout for connect()
                   remote.setTimeout timeout, ->
                     utils.debug "remote on timeout during connect()"
                     remote.destroy() if remote
                     connection.destroy() if connection
-        
+
                   stage = 5
                   utils.debug "stage = 5"
                 )
@@ -184,32 +184,32 @@ exports.main = ->
                     return
                   data = encryptor.encrypt data
                   remote.pause() unless connection.write(data)
-        
+
                 remote.on "end", ->
                   utils.debug "remote on end"
                   connection.end() if connection
-        
+
                 remote.on "error", (e)->
                   utils.debug "remote on error"
                   utils.error "remote #{remoteAddr}:#{remotePort} error: #{e}"
-     
+
                 remote.on "close", (had_error)->
                   utils.debug "remote on close:#{had_error}"
                   if had_error
                     connection.destroy() if connection
                   else
                     connection.end() if connection
-        
+
                 remote.on "drain", ->
                   utils.debug "remote on drain"
                   connection.resume() if connection
-        
+
                 # use a small timeout for connect()
                 remote.setTimeout 15 * 1000, ->
                   utils.debug "remote on timeout during connect()"
                   remote.destroy() if remote
                   connection.destroy() if connection
-        
+
                 if data.length > headerLength
                   # make sure no data is lost
                   buf = new Buffer(data.length - headerLength)
@@ -227,15 +227,15 @@ exports.main = ->
               # remote server not connected
               # cache received buffers
               # make sure no data is lost
-        
+
           connection.on "end", ->
             utils.debug "connection on end"
             remote.end()  if remote
-         
+
           connection.on "error", (e)->
             utils.debug "connection on error"
             utils.error "local error: #{e}"
-    
+
           connection.on "close", (had_error)->
             utils.debug "connection on close:#{had_error}"
             if had_error
@@ -243,21 +243,21 @@ exports.main = ->
             else
               remote.end() if remote
             clean()
-        
+
           connection.on "drain", ->
             utils.debug "connection on drain"
             remote.resume()  if remote
-        
+
           connection.setTimeout timeout, ->
             utils.debug "connection on timeout"
             remote.destroy()  if remote
             connection.destroy() if connection
         )
-        
+
         server.listen PORT, server_ip, ->
           utils.info "server listening at #{server_ip}:#{PORT} "
         udpRelay.createServer(server_ip, PORT, null, null, key, METHOD, timeout, false)
-         
+
         server.on "error", (e) ->
           if e.code is "EADDRINUSE"
             utils.error "Address in use, aborting"
@@ -267,5 +267,5 @@ exports.main = ->
             process.exit 1
       )()
 
-if require.main is module 
+if require.main is module
   exports.main()
