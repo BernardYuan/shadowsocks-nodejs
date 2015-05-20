@@ -100,7 +100,7 @@ exports.INFO = 2
 exports.WARN = 3
 exports.ERROR = 4
 
-_logging_level = exports.INFO
+_logging_level = exports.WARN
 
 exports.config = (level) ->
   _logging_level = level
